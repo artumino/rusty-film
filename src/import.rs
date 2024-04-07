@@ -66,7 +66,7 @@ impl CommandRunner for ImportArgs {
                             ));
 
                             if !self.dry_run {
-                                let _ = std::fs::create_dir_all(output_path);
+                                let _ = std::fs::create_dir_all(output_path.parent().unwrap());
                                 std::fs::copy(image.filename(), output_path)?;
                             }
                         }
@@ -87,7 +87,9 @@ impl CommandRunner for ImportArgs {
                                     metadata_out_path.display()
                                 ));
                                 if !self.dry_run {
-                                    let _ = std::fs::create_dir_all(metadata_out_path);
+                                    let _ = std::fs::create_dir_all(
+                                        metadata_out_path.parent().unwrap(),
+                                    );
                                     std::fs::copy(metadata_file.filename(), metadata_out_path)?;
                                 }
                             }
