@@ -25,6 +25,8 @@ pub struct ImportArgs {
 }
 
 impl CommandRunner for ImportArgs {
+
+    #[cfg_attr(feature = "tracing", tracing::instrument)]
     fn run(&self) -> anyhow::Result<()> {
         rexiv2::initialize()?;
         println!(
@@ -42,15 +44,23 @@ impl CommandRunner for ImportArgs {
             match entry {
                 Ok(path) => {
                     progress.set_message(format!("Processing {}", &path.display()));
-                    let image = Image::load(path.as_path())?;
+                    let image = Image::load(path.as_path(), self.destination.as_path())?;
                     progress.println(format!(
                         "Saving image {} to {}",
                         image.filename().display(),
                         image
-                            .output_path(&self.destination)
+                            .output_path()
                             .context("Invalid output path")?
                             .display()
                     ));
+
+                    let metadata_files = super::metadata::discover_from_image(&image);
+                    for metadata_file in metadata_files {
+                        progress.println(format!(
+                            "Saving metadata file {}",
+                            metadata_file.output_path().to_str().unwrap()
+                        ));
+                    }
                 }
                 Err(e) => {
                     eprintln!("Error: {}", e);

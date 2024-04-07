@@ -3,6 +3,7 @@ use enum_dispatch::enum_dispatch;
 use import::ImportArgs;
 
 mod image;
+pub mod metadata;
 mod import;
 
 #[derive(Debug, Parser)]
@@ -24,6 +25,14 @@ pub trait CommandRunner {
 }
 
 fn main() -> anyhow::Result<()> {
+    #[cfg(feature = "tracing")]
+    {
+        use tracing_subscriber::layer::SubscriberExt;
+
+        tracing::subscriber::set_global_default(
+            tracing_subscriber::registry().with(tracing_tracy::TracyLayer::default())
+        ).expect("setup tracy layer");
+    }
     let app = App::parse();
     app.command.run()?;
     Ok(())

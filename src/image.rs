@@ -7,35 +7,38 @@ use std::path::{Path, PathBuf};
 
 extern crate rexiv2;
 
+#[derive(Debug)]
 pub struct Image<'a> {
     filename: &'a Path,
+    out_file: Option<PathBuf>,
+    original_date: Option<NaiveDateTime>,
     hash: u32,
-    exif: Metadata,
-    metadata_files: Vec<ImageMetadataFile>,
-}
-
-pub struct ImageMetadataFile {
-    filename: PathBuf,
-    includes_image_extensions: bool,
+    exif: Option<Metadata>,
 }
 
 impl<'a> Image<'a> {
-    pub fn load(filename: &Path) -> anyhow::Result<Image> {
+    #[cfg_attr(feature = "tracing", tracing::instrument)]
+    pub fn load(filename: &'a Path, destination: &Path) -> anyhow::Result<Image<'a>> {
         let file = File::open(filename)?;
-        let exif = Metadata::new_from_path(filename)?;
+        let exif = Metadata::new_from_path(filename).ok();
         let mut hash_reader = BufReader::new(&file);
         let hash = Image::compute_chunked_hash::<4096, _>(&mut hash_reader)?;
-
-        let metadata_files = vec![];
+        let date = Image::get_exif_date(&exif);
+        let output_path = Image::compute_output_path(filename, &date, hash, destination);
         Ok(Image {
             filename,
             hash,
             exif,
-            metadata_files,
+            original_date: date,
+            out_file: output_path
         })
     }
 
     fn compute_chunked_hash<const S: usize, R: Read>(reader: &mut R) -> anyhow::Result<u32> {
+        #[cfg(feature = "tracing")]
+        let span = tracing::span!(tracing::Level::INFO, "compute_chunked_hash");
+        #[cfg(feature = "tracing")]
+        let _guard = span.enter();
         let mut hasher = crc32c::Crc32cHasher::new(0); //crc32fast::Hasher::new();
         let mut buffer = [0; S];
         loop {
@@ -52,24 +55,40 @@ impl<'a> Image<'a> {
         self.filename
     }
 
+    pub fn output_path(&self) -> Option<&PathBuf> {
+        self.out_file.as_ref()
+    }
+
+    pub fn original_date(&self) -> Option<NaiveDateTime> {
+        self.original_date
+    }
+
+    #[cfg_attr(feature = "tracing", tracing::instrument)]
+    pub fn alread_exists(&self) -> bool {
+        self.out_file.as_ref().map(|path| path.exists()).unwrap_or(false)
+    }
+
     pub fn hash(&self) -> u32 {
         self.hash
     }
 
-    pub fn get_exif_date(&self) -> Option<NaiveDateTime> {
-        let date = self.exif.get_tag_string("Exif.Image.DateTime").ok()?;
+    #[cfg_attr(feature = "tracing", tracing::instrument)]
+    pub fn get_exif_date(exif: &Option<Metadata>) -> Option<NaiveDateTime> {
+        let exif = exif.as_ref()?;
+        let date = exif.get_tag_string("Exif.Image.DateTime").ok()?;
         let date = NaiveDateTime::parse_from_str(&date, "%Y:%m:%d %H:%M:%S").ok()?;
         Some(date)
     }
 
-    pub fn output_path(&self, destination: &Path) -> Option<PathBuf> {
-        let date = self.get_exif_date()?;
-        let extension = self.filename.extension()?;
+    #[cfg_attr(feature = "tracing", tracing::instrument)]
+    fn compute_output_path(filename: &Path, date: &Option<NaiveDateTime>, hash: u32, destination: &Path) -> Option<PathBuf> {
+        let date = date.as_ref()?;
+        let extension = filename.extension()?;
         let extension = extension.to_str()?;
         let output_path = destination.join(format!(
             "{}_{:08X}.{}",
             date.format("%Y/%m/%d/%Y%m%d_%H%M%S"),
-            self.hash,
+            hash,
             extension
         ));
         Some(output_path)
