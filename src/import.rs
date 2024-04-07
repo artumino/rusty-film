@@ -1,6 +1,6 @@
 use super::image::Image;
 use super::CommandRunner;
-use anyhow::Context;
+
 use clap::Args;
 use glob::glob;
 use std::path::PathBuf;
@@ -52,7 +52,16 @@ impl CommandRunner for ImportArgs {
                     progress.set_message(format!("Processing {}", &path.display()));
                     let image = Image::load(path.as_path(), self.destination.as_path())?;
 
-                    let output_path = image.output_path().context("Invalid output path")?;
+                    let output_path = match image.output_path() {
+                        Some(p) => p,
+                        None => {
+                            eprintln!(
+                                "Error: Could not determine output path for image {}",
+                                image.filename().display()
+                            );
+                            continue;
+                        }
+                    };
                     match image.alread_exists() {
                         true => progress.println(format!(
                             "Image {} already exists, skipping image copy...",
