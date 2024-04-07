@@ -55,10 +55,10 @@ impl CommandRunner for ImportArgs {
                     let output_path = match image.output_path() {
                         Some(p) => p,
                         None => {
-                            eprintln!(
+                            progress.println(format!(
                                 "Error: Could not determine output path for image {}",
                                 image.filename().display()
-                            );
+                            ));
                             continue;
                         }
                     };

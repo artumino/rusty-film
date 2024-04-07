@@ -90,7 +90,16 @@ impl<'a> Image<'a> {
         hash: u32,
         destination: &Path,
     ) -> Option<PathBuf> {
-        let date = date.as_ref()?;
+        let date = match date {
+            Some(d) => *d,
+            None => {
+                use chrono::{offset::Utc, DateTime};
+                let metadata = std::fs::metadata(filename).ok()?;
+                let date = metadata.created().ok()?;
+                let chrono: DateTime<Utc> = date.into();
+                chrono.naive_utc()
+            }
+        };
         let extension = filename.extension()?;
         let extension = extension.to_str()?;
         let output_path = destination.join(format!(
