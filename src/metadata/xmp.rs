@@ -44,8 +44,7 @@ pub fn discover_metadata_files(image: &Image) -> Vec<ImageMetadataFile> {
             .output_path()
             .and_then(|x| x.parent())
             .unwrap()
-            .join(sidecar_filename)
-            .with_extension(entry_extension);
+            .join(format!("{}.{}", sidecar_filename, entry_extension));
         let edit_date = std::fs::metadata(&entry)
             .ok()
             .and_then(|metadata| metadata.modified().ok())
