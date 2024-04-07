@@ -1,7 +1,8 @@
 use clap::{Parser, Subcommand};
 use enum_dispatch::enum_dispatch;
 use import::ImportArgs;
-use std::future::Future;
+
+mod image;
 mod import;
 
 #[derive(Debug, Parser)]
@@ -19,12 +20,11 @@ pub enum Command {
 
 #[enum_dispatch]
 pub trait CommandRunner {
-    fn run(&self) -> impl Future<Output = anyhow::Result<()>>;
+    fn run(&self) -> anyhow::Result<()>;
 }
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
+fn main() -> anyhow::Result<()> {
     let app = App::parse();
-    app.command.run().await?;
+    app.command.run()?;
     Ok(())
 }
