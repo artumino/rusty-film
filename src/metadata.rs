@@ -1,6 +1,6 @@
+use super::image::Image;
 use linkme::distributed_slice;
 use std::path::PathBuf;
-use super::image::Image;
 pub mod xmp;
 
 pub struct ImageMetadataFile {
@@ -20,7 +20,9 @@ impl ImageMetadataFile {
     }
 
     pub fn is_up_to_date(&self) -> bool {
-        self.output_edit_date.map(|date| date >= self.edit_date).unwrap_or(false)
+        self.output_edit_date
+            .map(|date| date >= self.edit_date)
+            .unwrap_or(false)
     }
 }
 
@@ -29,5 +31,8 @@ pub static IMAGE_METADATA_DISCOVERERS: [fn(image: &Image) -> Vec<ImageMetadataFi
 
 #[cfg_attr(feature = "tracing", tracing::instrument)]
 pub fn discover_from_image(image: &Image) -> Vec<ImageMetadataFile> {
-    IMAGE_METADATA_DISCOVERERS.iter().flat_map(|discoverer| discoverer(image)).collect()
+    IMAGE_METADATA_DISCOVERERS
+        .iter()
+        .flat_map(|discoverer| discoverer(image))
+        .collect()
 }

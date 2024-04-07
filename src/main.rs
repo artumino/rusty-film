@@ -3,8 +3,8 @@ use enum_dispatch::enum_dispatch;
 use import::ImportArgs;
 
 mod image;
-pub mod metadata;
 mod import;
+pub mod metadata;
 
 #[derive(Debug, Parser)]
 #[clap(name = "rusty-film", version)]
@@ -30,8 +30,9 @@ fn main() -> anyhow::Result<()> {
         use tracing_subscriber::layer::SubscriberExt;
 
         tracing::subscriber::set_global_default(
-            tracing_subscriber::registry().with(tracing_tracy::TracyLayer::default())
-        ).expect("setup tracy layer");
+            tracing_subscriber::registry().with(tracing_tracy::TracyLayer::default()),
+        )
+        .expect("setup tracy layer");
     }
     let app = App::parse();
     app.command.run()?;

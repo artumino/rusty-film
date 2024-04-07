@@ -13,7 +13,7 @@ pub struct Image<'a> {
     out_file: Option<PathBuf>,
     original_date: Option<NaiveDateTime>,
     hash: u32,
-    exif: Option<Metadata>,
+    _exif: Option<Metadata>,
 }
 
 impl<'a> Image<'a> {
@@ -28,9 +28,9 @@ impl<'a> Image<'a> {
         Ok(Image {
             filename,
             hash,
-            exif,
+            _exif: exif,
             original_date: date,
-            out_file: output_path
+            out_file: output_path,
         })
     }
 
@@ -65,7 +65,10 @@ impl<'a> Image<'a> {
 
     #[cfg_attr(feature = "tracing", tracing::instrument)]
     pub fn alread_exists(&self) -> bool {
-        self.out_file.as_ref().map(|path| path.exists()).unwrap_or(false)
+        self.out_file
+            .as_ref()
+            .map(|path| path.exists())
+            .unwrap_or(false)
     }
 
     pub fn hash(&self) -> u32 {
@@ -81,7 +84,12 @@ impl<'a> Image<'a> {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument)]
-    fn compute_output_path(filename: &Path, date: &Option<NaiveDateTime>, hash: u32, destination: &Path) -> Option<PathBuf> {
+    fn compute_output_path(
+        filename: &Path,
+        date: &Option<NaiveDateTime>,
+        hash: u32,
+        destination: &Path,
+    ) -> Option<PathBuf> {
         let date = date.as_ref()?;
         let extension = filename.extension()?;
         let extension = extension.to_str()?;
