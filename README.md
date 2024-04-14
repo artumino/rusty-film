@@ -4,6 +4,8 @@ This is a simple tool that given a glob path imports all the photos and related 
 
 It tries to avoid duplicates and unecessary copies.
 
+All operations are done through the filesystem, an optional single file cache can be used to speedup re-imports but can be switchet off with the `--no-cache` flag.
+
 ## Example
 Organizes all png,jpg,cr2,cr3,dng photos under the `/run/media/artumino/Photos` folder:
 `rusty-film import -s '/run/media/artumino/Photos/**/*.[CJPDcjpd][RPNrpn][23GEge]' -d '/run/media/artumino/Library'`

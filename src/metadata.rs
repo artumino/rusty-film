@@ -1,6 +1,6 @@
-use super::image::Image;
+use super::image::ImageInfo;
 use linkme::distributed_slice;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 pub mod xmp;
 
 pub struct ImageMetadataFile {
@@ -27,12 +27,15 @@ impl ImageMetadataFile {
 }
 
 #[distributed_slice]
-pub static IMAGE_METADATA_DISCOVERERS: [fn(image: &Image) -> Vec<ImageMetadataFile>];
+pub static IMAGE_METADATA_DISCOVERERS: [fn(
+    image: &ImageInfo,
+    destination: &Path,
+) -> Vec<ImageMetadataFile>];
 
 #[cfg_attr(feature = "tracing", tracing::instrument)]
-pub fn discover_from_image(image: &Image) -> Vec<ImageMetadataFile> {
+pub fn discover_from_image(image: &ImageInfo, destination: &Path) -> Vec<ImageMetadataFile> {
     IMAGE_METADATA_DISCOVERERS
         .iter()
-        .flat_map(|discoverer| discoverer(image))
+        .flat_map(|discoverer| discoverer(image, destination))
         .collect()
 }

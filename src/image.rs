@@ -3,6 +3,7 @@ use core::hash::Hasher;
 #[cfg(feature = "memmap2")]
 use memmap2::{Advice, Mmap};
 use rexiv2::Metadata;
+use serde::{Deserialize, Serialize};
 use std::fs::File;
 #[cfg(not(feature = "memmap2"))]
 use std::io::{BufReader, Read};
@@ -10,38 +11,33 @@ use std::path::{Path, PathBuf};
 
 extern crate rexiv2;
 
-#[derive(Debug)]
-pub struct Image<'a> {
-    filename: &'a Path,
-    out_file: Option<PathBuf>,
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ImageInfo {
+    filename: PathBuf,
     original_date: Option<NaiveDateTime>,
     hash: u32,
-    _exif: Option<Metadata>,
 }
 
-impl<'a> Image<'a> {
+impl ImageInfo {
     #[cfg_attr(feature = "tracing", tracing::instrument)]
-    pub fn load(filename: &'a Path, destination: &Path) -> anyhow::Result<Image<'a>> {
+    pub fn load(filename: &Path) -> anyhow::Result<ImageInfo> {
         let file = File::open(filename)?;
         let exif = Metadata::new_from_path(filename).ok();
         let hash = {
             #[cfg(not(feature = "memmap2"))]
             {
-                Image::compute_chunked_hash::<4096>(&file)?
+                ImageInfo::compute_chunked_hash::<4096>(&file)?
             }
             #[cfg(feature = "memmap2")]
             {
-                Image::compute_chunked_hash(&file)?
+                ImageInfo::compute_chunked_hash(&file)?
             }
         };
-        let date = Image::get_exif_date(&exif);
-        let output_path = Image::compute_output_path(filename, &date, hash, destination);
-        Ok(Image {
-            filename,
+        let date = ImageInfo::get_exif_date(&exif);
+        Ok(ImageInfo {
+            filename: filename.to_path_buf(),
             hash,
-            _exif: exif,
             original_date: date,
-            out_file: output_path,
         })
     }
 
@@ -76,11 +72,13 @@ impl<'a> Image<'a> {
     }
 
     pub fn filename(&self) -> &Path {
-        self.filename
+        &self.filename
     }
 
-    pub fn output_path(&self) -> Option<&PathBuf> {
-        self.out_file.as_ref()
+    pub fn output_path(&self, destination: &Path) -> Option<PathBuf> {
+        ImageInfo::compute_output_path(&self.filename, &self.original_date, self.hash)
+            .as_ref()
+            .map(|path| destination.join(path))
     }
 
     pub fn original_date(&self) -> Option<NaiveDateTime> {
@@ -88,10 +86,10 @@ impl<'a> Image<'a> {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument)]
-    pub fn alread_exists(&self) -> bool {
-        self.out_file
+    pub fn alread_exists(&self, destination: &Path) -> bool {
+        ImageInfo::compute_output_path(&self.filename, &self.original_date, self.hash)
             .as_ref()
-            .map(|path| path.exists())
+            .map(|path| destination.join(path).exists())
             .unwrap_or(false)
     }
 
@@ -112,8 +110,7 @@ impl<'a> Image<'a> {
         filename: &Path,
         date: &Option<NaiveDateTime>,
         hash: u32,
-        destination: &Path,
-    ) -> Option<PathBuf> {
+    ) -> Option<String> {
         let date = match date {
             Some(d) => *d,
             None => {
@@ -126,12 +123,12 @@ impl<'a> Image<'a> {
         };
         let extension = filename.extension()?;
         let extension = extension.to_str()?;
-        let output_path = destination.join(format!(
+        let output_path = format!(
             "{}_{:08X}.{}",
             date.format("%Y/%m/%d/%Y%m%d_%H%M%S"),
             hash,
             extension
-        ));
+        );
         Some(output_path)
     }
 }

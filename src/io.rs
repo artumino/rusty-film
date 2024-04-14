@@ -1,11 +1,13 @@
 pub mod utils {
+    use log::debug;
+
     pub fn safe_copy(
         source: &std::path::Path,
         destination: &std::path::Path,
         dry_run: bool,
     ) -> anyhow::Result<()> {
         if dry_run {
-            println!(
+            debug!(
                 "Would copy {} to {}",
                 source.display(),
                 destination.display()

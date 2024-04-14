@@ -1,5 +1,6 @@
 use clap::{Parser, Subcommand};
 use enum_dispatch::enum_dispatch;
+use env_logger::Logger;
 use import::ImportArgs;
 
 mod image;
@@ -22,10 +23,13 @@ pub enum Command {
 
 #[enum_dispatch]
 pub trait CommandRunner {
-    fn run(&self) -> anyhow::Result<()>;
+    fn run(&self, logger: Logger) -> anyhow::Result<()>;
 }
 
 fn main() -> anyhow::Result<()> {
+    let logger =
+        env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("debug")).build();
+
     #[cfg(feature = "tracing")]
     {
         use tracing_subscriber::layer::SubscriberExt;
@@ -36,6 +40,6 @@ fn main() -> anyhow::Result<()> {
         .expect("setup tracy layer");
     }
     let app = App::parse();
-    app.command.run()?;
+    app.command.run(logger)?;
     Ok(())
 }
