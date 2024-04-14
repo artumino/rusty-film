@@ -21,8 +21,16 @@ impl<'a> Image<'a> {
     pub fn load(filename: &'a Path, destination: &Path) -> anyhow::Result<Image<'a>> {
         let file = File::open(filename)?;
         let exif = Metadata::new_from_path(filename).ok();
-        let mut hash_reader = BufReader::new(&file);
-        let hash = Image::compute_chunked_hash::<4096, _>(&mut hash_reader)?;
+        let hash = {
+            #[cfg(not(feature = "memmap"))]
+            {
+                Image::compute_chunked_hash::<4096>(&file)?
+            }
+            #[cfg(feature = "memmap")]
+            {
+                Image::compute_chunked_hash(&file)?
+            }
+        };
         let date = Image::get_exif_date(&exif);
         let output_path = Image::compute_output_path(filename, &date, hash, destination);
         Ok(Image {
@@ -34,11 +42,15 @@ impl<'a> Image<'a> {
         })
     }
 
-    fn compute_chunked_hash<const S: usize, R: Read>(reader: &mut R) -> anyhow::Result<u32> {
+    #[cfg(not(feature = "memmap"))]
+    fn compute_chunked_hash<const S: usize>(file: &File) -> anyhow::Result<u32> {
+        let mut reader = BufReader::new(file);
+
         #[cfg(feature = "tracing")]
         let span = tracing::span!(tracing::Level::INFO, "compute_chunked_hash");
         #[cfg(feature = "tracing")]
         let _guard = span.enter();
+
         let mut hasher = crc32c::Crc32cHasher::new(0); //crc32fast::Hasher::new();
         let mut buffer = [0; S];
         loop {
@@ -48,6 +60,15 @@ impl<'a> Image<'a> {
             }
             hasher.write(&buffer[..bytes_read]);
         }
+        Ok(hasher.finish() as u32)
+    }
+
+    #[cfg(feature = "memmap")]
+    fn compute_chunked_hash(file: &File) -> anyhow::Result<u32> {
+        let mmap = unsafe { memmap::Mmap::map(file)? };
+        mmap.advise(memmap::Advice::Sequential)?;
+        let mut hasher = crc32c::Crc32cHasher::new(0);
+        hasher.write(&mmap);
         Ok(hasher.finish() as u32)
     }
 
