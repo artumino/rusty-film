@@ -1,7 +1,10 @@
 use chrono::NaiveDateTime;
 use core::hash::Hasher;
+#[cfg(feature = "memmap2")]
+use memmap2::{Advice, Mmap};
 use rexiv2::Metadata;
 use std::fs::File;
+#[cfg(not(feature = "memmap2"))]
 use std::io::{BufReader, Read};
 use std::path::{Path, PathBuf};
 
@@ -22,11 +25,11 @@ impl<'a> Image<'a> {
         let file = File::open(filename)?;
         let exif = Metadata::new_from_path(filename).ok();
         let hash = {
-            #[cfg(not(feature = "memmap"))]
+            #[cfg(not(feature = "memmap2"))]
             {
                 Image::compute_chunked_hash::<4096>(&file)?
             }
-            #[cfg(feature = "memmap")]
+            #[cfg(feature = "memmap2")]
             {
                 Image::compute_chunked_hash(&file)?
             }
@@ -42,7 +45,7 @@ impl<'a> Image<'a> {
         })
     }
 
-    #[cfg(not(feature = "memmap"))]
+    #[cfg(not(feature = "memmap2"))]
     fn compute_chunked_hash<const S: usize>(file: &File) -> anyhow::Result<u32> {
         let mut reader = BufReader::new(file);
 
@@ -63,10 +66,10 @@ impl<'a> Image<'a> {
         Ok(hasher.finish() as u32)
     }
 
-    #[cfg(feature = "memmap")]
+    #[cfg(feature = "memmap2")]
     fn compute_chunked_hash(file: &File) -> anyhow::Result<u32> {
-        let mmap = unsafe { memmap::Mmap::map(file)? };
-        mmap.advise(memmap::Advice::Sequential)?;
+        let mmap = unsafe { Mmap::map(file)? };
+        mmap.advise(Advice::Sequential)?;
         let mut hasher = crc32c::Crc32cHasher::new(0);
         hasher.write(&mmap);
         Ok(hasher.finish() as u32)
