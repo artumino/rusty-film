@@ -30,7 +30,7 @@ impl ImageInfo {
             }
             #[cfg(feature = "memmap2")]
             {
-                ImageInfo::compute_chunked_hash(&file)?
+                ImageInfo::compute_hash(&file)?
             }
         };
         let date = ImageInfo::get_exif_date(&exif);
@@ -63,7 +63,12 @@ impl ImageInfo {
     }
 
     #[cfg(feature = "memmap2")]
-    fn compute_chunked_hash(file: &File) -> anyhow::Result<u32> {
+    fn compute_hash(file: &File) -> anyhow::Result<u32> {
+        #[cfg(feature = "tracing")]
+        let span = tracing::span!(tracing::Level::INFO, "compute_hash");
+        #[cfg(feature = "tracing")]
+        let _guard = span.enter();
+
         let mmap = unsafe { Mmap::map(file)? };
         mmap.advise(Advice::Sequential)?;
         let mut hasher = crc32c::Crc32cHasher::new(0);
