@@ -4,6 +4,7 @@ use import::ImportArgs;
 
 mod image;
 mod import;
+mod io;
 pub mod metadata;
 
 #[derive(Debug, Parser)]

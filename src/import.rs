@@ -1,5 +1,6 @@
 use super::image::Image;
 use super::CommandRunner;
+use crate::io::utils::safe_copy;
 
 use clap::Args;
 use glob::glob;
@@ -74,10 +75,7 @@ impl CommandRunner for ImportArgs {
                                 output_path.display()
                             ));
 
-                            if !self.dry_run {
-                                let _ = std::fs::create_dir_all(output_path.parent().unwrap());
-                                std::fs::copy(image.filename(), output_path)?;
-                            }
+                            safe_copy(image.filename(), output_path, self.dry_run)?;
                         }
                     }
 
@@ -95,12 +93,12 @@ impl CommandRunner for ImportArgs {
                                     metadata_file.filename().display(),
                                     metadata_out_path.display()
                                 ));
-                                if !self.dry_run {
-                                    let _ = std::fs::create_dir_all(
-                                        metadata_out_path.parent().unwrap(),
-                                    );
-                                    std::fs::copy(metadata_file.filename(), metadata_out_path)?;
-                                }
+
+                                safe_copy(
+                                    metadata_file.filename(),
+                                    metadata_out_path,
+                                    self.dry_run,
+                                )?;
                             }
                         }
                     }
