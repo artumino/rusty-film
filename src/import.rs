@@ -32,7 +32,6 @@ pub struct ImportArgs {
     pub destination: PathBuf,
 
     #[clap(
-        short,
         long,
         help = "Runs a dry-run, listing all operations without making any filesystem changes (except for cache files)"
     )]
@@ -91,7 +90,7 @@ impl CommandRunner for ImportArgs {
                             continue;
                         }
                     };
-                    match image.alread_exists(&self.destination) {
+                    match image.already_exists(&self.destination) {
                         true => info!(
                             "Image {} already exists, skipping image copy...",
                             output_path.display()

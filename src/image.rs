@@ -91,7 +91,7 @@ impl ImageInfo {
     }
 
     #[cfg_attr(feature = "tracing", tracing::instrument)]
-    pub fn alread_exists(&self, destination: &Path) -> bool {
+    pub fn already_exists(&self, destination: &Path) -> bool {
         ImageInfo::compute_output_path(&self.filename, &self.original_date, self.hash)
             .as_ref()
             .map(|path| destination.join(path).exists())
@@ -121,7 +121,7 @@ impl ImageInfo {
             None => {
                 use chrono::{offset::Utc, DateTime};
                 let metadata = std::fs::metadata(filename).ok()?;
-                let date = metadata.created().ok()?;
+                let date = metadata.created().ok().or_else(|| metadata.modified().ok())?;
                 let chrono: DateTime<Utc> = date.into();
                 chrono.naive_utc()
             }
